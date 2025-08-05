@@ -8,12 +8,12 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.kedokato.lession6.view.home.HomeScreen
-import com.kedokato.lession6.view.login.LoginScreen
-import com.kedokato.lession6.view.playlist.MyPlayListScreen
-import com.kedokato.lession6.view.profile.ProfileView
-import com.kedokato.lession6.view.signup.SignUpScreen
-import com.kedokato.lession6.view.splash.SplashScreen
+import com.kedokato.lession6.presentation.home.HomeScreen
+import com.kedokato.lession6.presentation.login.LoginScreen
+import com.kedokato.lession6.presentation.playlist.myplaylist.MyPlaylistScreen
+import com.kedokato.lession6.presentation.profile.ProfileScreen
+import com.kedokato.lession6.presentation.signup.SignUpScreen
+import com.kedokato.lession6.presentation.splash.SplashScreen
 
 @Composable
 fun AppNavigation(
@@ -24,6 +24,7 @@ fun AppNavigation(
             username = "",
             password = ""
         )
+//        RememberScreen.NestedGraph
     )
 
     NavDisplay(
@@ -43,6 +44,8 @@ fun AppNavigation(
             entry<RememberScreen.LoginScreen> { entry ->
                 LoginScreen(
                     modifier = modifier,
+                    initialUsername = entry.username,
+                    initialPassword = entry.password,
                     onSignUpClick = {
                         backStack.add(
                             RememberScreen.SignUpScreen
@@ -60,9 +63,15 @@ fun AppNavigation(
             entry<RememberScreen.SignUpScreen> {
                 SignUpScreen(
                     modifier = modifier,
-                    onBackClick = backStack::removeLastOrNull,
-                    onSignUpClick = { username: String,
-                                      password: String ->
+                    onBackClick = {
+                        backStack.removeLastOrNull()
+                    },
+                    onSignUpClick = { username, password ->
+                        // Xóa màn hình SignUpScreen khỏi backstack
+                        backStack.removeLastOrNull()
+                        // Xóa luôn màn hình LoginScreen cũ khỏi backstack
+                        backStack.removeLastOrNull()
+                        // Thêm lại màn hình LoginScreen mới với dữ liệu đã được cập nhật
                         backStack.add(
                             RememberScreen.LoginScreen(
                                 username = username,
@@ -85,17 +94,19 @@ fun AppNavigation(
             }
 
             entry<RememberScreen.ProfileScreen> {
-                ProfileView(
+                ProfileScreen(
                     isEditMode = false,
                     isDarkTheme = true,
                     modifier = modifier,
+                    onBackClick = {
+                        backStack.removeLastOrNull()
+                    }
 
                 )
             }
 
             entry<RememberScreen.PlaylistScreen> {
-                MyPlayListScreen(
-                )
+                MyPlaylistScreen()
             }
 
             entry<RememberScreen.NestedGraph> {

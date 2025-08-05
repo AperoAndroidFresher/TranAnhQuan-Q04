@@ -3,23 +3,21 @@ package com.kedokato.lession6.navigation
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -31,9 +29,10 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.example.compose.getCurrentColorScheme
-import com.kedokato.lession6.view.home.HomeScreen
-import com.kedokato.lession6.view.playlist.MyPlayListScreen
-import com.kedokato.lession6.view.playlist.PlayListScreen
+import com.kedokato.lession6.presentation.home.HomeScreen
+import com.kedokato.lession6.presentation.library.LibraryScreen
+import com.kedokato.lession6.presentation.playlist.myplaylist.MyPlaylistScreen
+import com.kedokato.lession6.presentation.playlist.playlist.MyPlaylistDetailScreen
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -52,8 +51,8 @@ fun NestedGraph(onProfileClick: () -> Unit) {
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = colorScheme.primary,
-                modifier = Modifier.graphicsLayer{
+                containerColor = colorScheme.background,
+                modifier = Modifier.graphicsLayer {
                     shape = RoundedCornerShape(
                         topStart = 20.dp,
                         topEnd = 20.dp
@@ -68,7 +67,8 @@ fun NestedGraph(onProfileClick: () -> Unit) {
                         icon = {
                             Icon(
                                 painter = painterResource(destination.icon),
-                                contentDescription = "$destination icon"
+                                contentDescription = "$destination icon",
+                                tint = if (currentBottomBarScreen == destination) colorScheme.primary else colorScheme.onBackground
                             )
                         },
                         alwaysShowLabel = false,
@@ -83,49 +83,60 @@ fun NestedGraph(onProfileClick: () -> Unit) {
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = colorScheme.background,
-                                selectedTextColor = colorScheme.background,
-                                indicatorColor =  Color.Transparent,
-                                unselectedIconColor = colorScheme.onBackground,
-                                unselectedTextColor = colorScheme.onBackground,
-                            ),
-                        )
+                            selectedIconColor = colorScheme.onBackground,
+                            selectedTextColor = colorScheme.primary,
+                            indicatorColor = Color.Transparent,
+                            unselectedIconColor = colorScheme.onBackground,
+                            unselectedTextColor = colorScheme.onBackground,
+                        ),
+                    )
                 }
 
             }
         }
-    ) {
-        NavDisplay(
-            backStack = backStack,
-            onBack = { backStack.removeLastOrNull() },
-            entryDecorators = listOf(
-                rememberSavedStateNavEntryDecorator(),
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.padding(innerPadding)
+        ){
+            NavDisplay(
+                backStack = backStack,
+                onBack = { backStack.removeLastOrNull() },
+                entryDecorators = listOf(
+                    rememberSavedStateNavEntryDecorator(),
 //                rememberViewModelStoreNavEntryDecorator()
-            ),
-            entryProvider = entryProvider {
-                entry<BottomBarScreen.Home> {
-                    HomeScreen(
-                        modifier = Modifier,
-                        onProfileClick = onProfileClick // call back function
-                    )
-                }
-                entry<BottomBarScreen.Library> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Library",
-                            fontSize = MaterialTheme.typography.titleLarge.fontSize
+                ),
+                entryProvider = entryProvider {
+                    entry<BottomBarScreen.Home> {
+                        HomeScreen(
+                            modifier = Modifier,
+                            onProfileClick = onProfileClick
+                        )
+                    }
+                    entry<BottomBarScreen.Library> {
+                        LibraryScreen(
+                            modifier = Modifier.fillMaxSize()
+
+                        )
+                    }
+
+
+                    entry<BottomBarScreen.Playlist> {
+                        MyPlaylistScreen(
+                            onPlaylistClick = { playlistId, playlistTitle ->
+                                backStack.add(RememberScreen.PlaylistDetailScreen(playlistId, playlistTitle))
+                            },
+                        )
+                    }
+
+                    entry<RememberScreen.PlaylistDetailScreen> { entry ->
+                        MyPlaylistDetailScreen(
+                            playlistId = entry.playListId,
+                            playlistTitle = entry.playlistTittle,
                         )
                     }
                 }
-
-                entry<BottomBarScreen.Playlist> {
-                    MyPlayListScreen()
-                }
-            }
-        )
+            )
+        }
     }
 }
 

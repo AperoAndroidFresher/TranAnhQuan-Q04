@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.kotlin.serialization)
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -38,6 +39,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+
+
+
 }
 
 dependencies {
@@ -52,6 +60,16 @@ dependencies {
 
     implementation(libs.coil2.compose)
 
+
+    ksp("androidx.room:room-compiler:2.5.0")
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+
+    implementation(libs.koin.core)
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose)
+
+    implementation(libs.compose.foundation)
 
 
     implementation(libs.androidx.core.ktx)

@@ -14,7 +14,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.compose.AppTheme
 import com.kedokato.lession6.navigation.AppNavigation
-import com.kedokato.lession6.view.config.ThemeManager
+import com.kedokato.lession6.presentation.config.ThemeManager
 
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        // Làm thanh điều hướng trong suốt
+
         window.navigationBarColor = Color.Transparent.toArgb()
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars =
             true

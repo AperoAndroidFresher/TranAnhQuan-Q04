@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.core)
 
     implementation(libs.coil2.compose)
+    implementation(libs.androidx.datastore.core.android)
 
 
     ksp("androidx.room:room-compiler:2.5.0")
@@ -70,6 +71,18 @@ dependencies {
     implementation(libs.koin.compose)
 
     implementation(libs.compose.foundation)
+
+
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
+
+    implementation(libs.lottie.compose)
+
+    implementation(libs.datastore.preferences)
+
+
 
 
     implementation(libs.androidx.core.ktx)

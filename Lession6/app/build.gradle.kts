@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.kotlin.serialization)
     id("com.google.devtools.ksp")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -59,6 +60,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.core)
 
     implementation(libs.coil2.compose)
+    implementation(libs.androidx.datastore.core.android)
 
 
     ksp("androidx.room:room-compiler:2.5.0")
@@ -70,6 +72,27 @@ dependencies {
     implementation(libs.koin.compose)
 
     implementation(libs.compose.foundation)
+
+
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
+
+    implementation(libs.lottie.compose)
+
+    implementation(libs.datastore.preferences)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.session)
+
+
+    implementation(libs.androidx.media)
+
+
+
+
 
 
     implementation(libs.androidx.core.ktx)

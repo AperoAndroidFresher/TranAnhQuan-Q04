@@ -12,6 +12,10 @@ import androidx.lifecycle.viewModelScope
 import com.kedokato.lession6.data.local.database.Entity.SongEntity
 import com.kedokato.lession6.domain.model.Song
 import com.kedokato.lession6.domain.usecase.AddSongToPlaylistUseCase
+import com.kedokato.lession6.domain.usecase.DownloadSongUseCase
+import com.kedokato.lession6.domain.usecase.GetUserIdUseCaseShared
+import com.kedokato.lession6.domain.usecase.LoadDownloadedSongsUseCase
+import com.kedokato.lession6.domain.usecase.LoadSongFromRemoteUseCase
 import com.kedokato.lession6.domain.usecase.LoadSongsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,10 +24,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.io.IOException
 
 class LibraryViewModel(
     private val loadSongsUseCase: LoadSongsUseCase,
     private val addSongToPlaylistUseCase: AddSongToPlaylistUseCase,
+    private val loadSongsFromRemoteUseCase: LoadSongFromRemoteUseCase,
+    private val downloadSongFromRemoteUseCase: DownloadSongUseCase,
+    private val loadDownloadedSongsUseCase: LoadDownloadedSongsUseCase,
+    private val getUserIdUseCaseShared: GetUserIdUseCaseShared,
     private val context: Context
 ) : ViewModel() {
 
@@ -65,6 +75,15 @@ class LibraryViewModel(
             is LibraryIntent.SongSelected -> {
                 _state.update { it.copy(song = intent.song ) }
             }
+
+            is LibraryIntent.LoadSongsFromRemote -> {
+                loadSongsFromRemote()
+            }
+
+            is LibraryIntent.RetryLoadSongsFromRemote -> {
+                _state.update { it.copy(isLoading = true, errorLoadingFromRemote = null) }
+                loadSongsFromRemote()
+            }
         }
     }
 
@@ -88,7 +107,7 @@ class LibraryViewModel(
 
     private fun loadSongs(forceReload: Boolean = false) {
         if (!forceReload && cachedSongs != null) {
-            _state.update { it.copy(songs = cachedSongs!!, isLoading = false) }
+            _state.update { it.copy(localSongs = cachedSongs!!, isLoading = false) }
             return
         }
 
@@ -115,7 +134,7 @@ class LibraryViewModel(
 
                 _state.update {
                     it.copy(
-                        songs = processedSongs,
+                        localSongs = processedSongs,
                         isLoading = false,
                         errorMessage = null
                     )
@@ -164,9 +183,141 @@ class LibraryViewModel(
             }
         }
     }
+    private fun loadSongsFromRemote() {
+        viewModelScope.launch {
+            try {
+                _state.update { it.copy(isLoading = true, errorMessage = null) }
+
+              // kiem tra xem đã tải bài hát về chưa
+                val hasDownloaded = hasDownloadedSongs(getUserIdShared())
+
+                if (hasDownloaded) {
+                    //nếu đã tải bài hát về thì lấy từ bộ nhớ trong
+                    val downloadedSongs = withContext(Dispatchers.IO) {
+                        loadDownloadedSongsUseCase(getUserIdShared())
+                    }
+
+                    val processedSongs = withContext(Dispatchers.Default) {
+                        downloadedSongs.map { song ->
+                            song.copy(
+                                name = shortenTitle(song.name, 20),
+                                artist = shortenTitle(song.artist),
+                                duration = song.duration
+                            )
+                        }
+                    }
+
+                    _state.update {
+                        it.copy(
+                            remoteSongs = processedSongs,
+                            isLoading = false,
+                            errorMessage = null,
+                        )
+                    }
+
+                    Log.d("LibraryViewModel", "Loaded ${processedSongs.size} songs from internal storage")
+                } else {
+                   // neu chưa tải bài hát về thì lấy từ server
+                    val remoteSongs = withContext(Dispatchers.IO) {
+                        loadSongsFromRemoteUseCase()
+                    }
+
+                    val processedSongs = withContext(Dispatchers.Default) {
+                        remoteSongs.map { song ->
+                            song.copy(
+                                name = shortenTitle(song.name, 20),
+                                artist = shortenTitle(song.artist),
+                                duration = formatDuration(song.duration.toLong())
+                            )
+                        }
+                    }
+
+                   // tai ve nhung bai hat tu server
+                    downloadSongFromRemoteUseCase(processedSongs, getUserIdShared())
+
+                    _state.update {
+                        it.copy(
+                            remoteSongs = processedSongs,
+                            isLoading = false,
+                            errorMessage = null,
+                            errorLoadingFromRemote = null
+                        )
+                    }
+
+                    Log.d("LibraryViewModel", "Fetched and downloaded ${processedSongs.size} songs from server")
+                }
+
+            } catch (e: IOException) {
+                Log.e("LibraryViewModel", "Network error, trying to load downloaded songs", e)
+                loadOfflineSongs()
+            } catch (e: HttpException) {
+                Log.e("LibraryViewModel", "HTTP error, trying to load downloaded songs", e)
+                loadOfflineSongs()
+            } catch (e: Exception) {
+                Log.e("LibraryViewModel", "Unexpected error", e)
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorLoadingFromRemote = "Lỗi không xác định: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadOfflineSongs() {
+        viewModelScope.launch {
+            try {
+                val downloadedSongs = withContext(Dispatchers.IO) {
+                    loadDownloadedSongsUseCase(getUserIdShared())
+                }
+
+                val processedSongs = withContext(Dispatchers.Default) {
+                    downloadedSongs.map { song ->
+                        song.copy(
+                            name = shortenTitle(song.name, 30),
+                            artist = shortenTitle(song.artist)
+                        )
+                    }
+                }
+
+                _state.update {
+                    it.copy(
+                        remoteSongs = processedSongs,
+                        isLoading = false,
+                    )
+                }
+
+            } catch (e: Exception) {
+                Log.e("LibraryViewModel", "Error loading offline songs", e)
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun hasDownloadedSongs(userId: Long): Boolean {
+        return withContext(Dispatchers.IO) {
+            val downloadedSongs = loadDownloadedSongsUseCase(userId)
+            downloadedSongs.isNotEmpty()
+        }
+    }
 
 
-    fun clearCache() {
+
+
+
+    private suspend fun getUserIdShared() : Long {
+       return  withContext(Dispatchers.IO) {
+            getUserIdUseCaseShared.invoke() ?: 4L
+        }
+    }
+
+
+        fun clearCache() {
         cachedSongs = null
     }
 

@@ -33,26 +33,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
 import com.example.compose.getCurrentColorScheme
-import com.kedokato.lession6.presentation.component.LoadingScreen
 import com.kedokato.lession6.data.local.database.Entity.PlaylistWithSongs
 import com.kedokato.lession6.data.local.database.Entity.SongEntity
 import com.kedokato.lession6.domain.model.Song
+import com.kedokato.lession6.presentation.component.DisconnectInternet
+import com.kedokato.lession6.presentation.component.LottieAnimationLoading
+import com.kedokato.lession6.presentation.library.component.DialogChoosePlaylist
 import com.kedokato.lession6.presentation.library.component.PlayListItem
 import com.kedokato.lession6.presentation.playlist.myplaylist.MyPlaylistIntent
 import com.kedokato.lession6.presentation.playlist.myplaylist.MyPlaylistViewModel
 import com.kedokato.lession6.presentation.playlist.myplaylist.PlaylistItem
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun LibraryScreen(modifier: Modifier) {
+fun LibraryScreen(modifier: Modifier,
+                  onSongClick: (Song) -> Unit = {}) {
 
     val viewModel: LibraryViewModel = koinViewModel()
     val myPlaylistViewModel: MyPlaylistViewModel = koinViewModel()
 
     val state = viewModel.state.collectAsState().value
-
     val myPlaylistState = myPlaylistViewModel.state.collectAsState().value
 
 
@@ -73,20 +77,18 @@ fun LibraryScreen(modifier: Modifier) {
     }
 
     LaunchedEffect(Unit) {
-        viewModel.processIntent(LibraryIntent.RequestPermissionAndLoadSongs)
         myPlaylistViewModel.processIntent(MyPlaylistIntent.LoadPlaylists)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             LibraryTopAppBar()
-            PagerWithTabs(songs = state.songs, viewModel = viewModel, state = state)
+            PagerWithTabs(viewModel = viewModel, state = state, onSongClick = onSongClick)
         }
 
         if (state.isLoading) {
-            LoadingScreen(
-                message = "Loading Songs...",
-                modifier = Modifier.matchParentSize()
+            LottieAnimationLoading(
+                modifier = Modifier.fillMaxSize()
             )
         }
 
@@ -107,13 +109,28 @@ fun LibraryScreen(modifier: Modifier) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PagerWithTabs(songs: List<Song> = listOf(), viewModel: LibraryViewModel, state: LibraryState) {
+fun PagerWithTabs(viewModel: LibraryViewModel, state: LibraryState, onSongClick: (Song) -> Unit = {}) {
     val pagerState = rememberPagerState(
         initialPage = 0,
-        pageCount = { 2 } // Number of tabs
+        pageCount = { 2 }
     )
     val scope = rememberCoroutineScope()
     val tabTitles = listOf("Local", "Remote")
+
+    LaunchedEffect(pagerState.currentPage) {
+        when (pagerState.currentPage) {
+            0 -> {
+                if (state.localSongs.isEmpty()) {
+                    viewModel.processIntent(LibraryIntent.RequestPermissionAndLoadSongs)
+                }
+            }
+            1 -> {
+                if (state.remoteSongs.isEmpty()) {
+                    viewModel.processIntent(LibraryIntent.LoadSongsFromRemote)
+                }
+            }
+        }
+    }
 
     Column {
         TabRow(
@@ -132,7 +149,6 @@ fun PagerWithTabs(songs: List<Song> = listOf(), viewModel: LibraryViewModel, sta
                     text = { Text(title) },
                     selectedContentColor = getCurrentColorScheme().primary,
                     unselectedContentColor = getCurrentColorScheme().secondary
-
                 )
             }
         }
@@ -146,23 +162,25 @@ fun PagerWithTabs(songs: List<Song> = listOf(), viewModel: LibraryViewModel, sta
         ) { page ->
             when (page) {
                 0 -> LibraryContent(
-                    songs = songs,
+                    songs = state.localSongs,
                     modifier = Modifier.fillMaxSize(),
                     onAddToPlaylist = {
                         viewModel.processIntent(LibraryIntent.ShowChoosePlaylistDialog)
                     },
-                    viewModel = viewModel
+                    onSongClick = onSongClick,
+                    viewModel = viewModel,
+                    state = state
                 )
 
-                1 -> Text(
-                    text = "Remote Library",
-                    color = getCurrentColorScheme().onBackground,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                else -> Text(
-                    text = "Unknown Page",
-                    modifier = Modifier.fillMaxSize()
+                1 -> LibraryContent(
+                    songs = state.remoteSongs,
+                    modifier = Modifier.fillMaxSize(),
+                    onAddToPlaylist = {
+                        viewModel.processIntent(LibraryIntent.ShowChoosePlaylistDialog)
+                    },
+                    onSongClick = onSongClick,
+                    viewModel = viewModel,
+                    state = state
                 )
             }
         }
@@ -174,14 +192,23 @@ fun LibraryContent(
     songs: List<Song>,
     modifier: Modifier = Modifier,
     onAddToPlaylist: () -> Unit,
-    viewModel: LibraryViewModel
+    onSongClick: (Song) -> Unit = {},
+    viewModel: LibraryViewModel,
+    state: LibraryState
 ) {
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
     ) {
         item {
-
+            if(state.errorLoadingFromRemote != null) {
+                DisconnectInternet(
+                    modifier = modifier,
+                    onRetry = {
+                        viewModel.processIntent(LibraryIntent.LoadSongsFromRemote)
+                    }
+                )
+            }
         }
 
         items(songs.size) { index ->
@@ -193,11 +220,13 @@ fun LibraryContent(
                     title = songs[index].name,
                     artist = songs[index].artist,
                     duration = parseDurationToMilliseconds(songs[index].duration),
-                    albumArt = songs[index].image,
-                    uri = songs[index].uri
+                    albumArt = songs[index].image?.toUri(),
+                    uri = songs[index].uri?.toUri()
                 )
                 viewModel.processIntent(LibraryIntent.SongSelected(songEntity))
-            })
+            },onSongClick = {
+                onSongClick(songs[index])
+            } )
         }
     }
 }
@@ -220,45 +249,6 @@ fun LibraryTopAppBar() {
 }
 
 
-@Composable
-fun DialogChoosePlaylist(
-    playlists: List<PlaylistWithSongs> = emptyList(),
-    onDismiss: () -> Unit,
-    onAddToPlaylist: (Long) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = modifier.size(240.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = getCurrentColorScheme().background,
-                contentColor = getCurrentColorScheme().onBackground
-            )
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-               item {
-                   Text(text = "Choose Playlist")
-               }
-
-                items(playlists) { playlist ->
-                    PlaylistItem(
-                        playlist = playlist,
-                        onClick = {
-                            onAddToPlaylist(playlist.playlist.playlistId)
-                            onDismiss()
-                        },
-                        onDeleteClick = { playlistId ->
-                            onDismiss()
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-}
 
 fun parseDurationToMilliseconds(durationString: String): Long {
     return try {

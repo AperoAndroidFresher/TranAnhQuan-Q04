@@ -36,12 +36,14 @@ import coil.request.ImageRequest
 import com.example.compose.getCurrentColorScheme
 import com.kedokato.lession6.R
 import com.kedokato.lession6.domain.model.Song
+import org.koin.androidx.compose.get
 
 @Composable
 fun PlayListItem(
     song: Song,
     modifier: Modifier = Modifier,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onSongClick: (song: Song) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -49,6 +51,7 @@ fun PlayListItem(
         modifier = modifier
             .background(getCurrentColorScheme().background)
             .fillMaxSize()
+            .clickable { onSongClick(song) }
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -59,7 +62,7 @@ fun PlayListItem(
             contentDescription = song.name,
             contentScale = ContentScale.Crop,
             placeholder = painterResource(id = R.drawable.nct),
-            error = painterResource(id = R.drawable.logo_app),
+            error = painterResource(id = R.drawable.apple_music),
             modifier = Modifier
                 .size(64.dp)
                 .padding(8.dp)
@@ -91,7 +94,7 @@ fun PlayListItem(
         Text(
             text = song.duration,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
+            color = getCurrentColorScheme().onBackground,
             modifier = Modifier
                 .padding(8.dp)
                 .align(Alignment.CenterVertically),
@@ -107,7 +110,7 @@ fun PlayListItem(
                 .clickable {
                     expanded = true
                 },
-            colorFilter = ColorFilter.tint(Color.White)
+            colorFilter = ColorFilter.tint(getCurrentColorScheme().onBackground)
         )
 
         Menu(

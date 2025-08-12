@@ -24,29 +24,62 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.example.compose.getCurrentColorScheme
 import com.kedokato.lession6.R
+import com.kedokato.lession6.domain.model.PlayerState
 import com.kedokato.lession6.domain.model.Song
+import com.kedokato.lession6.presentation.component.LottieAnimationPlayingSong
 import com.kedokato.lession6.presentation.playlist.playlist.Menu
+import com.kedokato.lession6.presentation.playlist.playlist.PlaylistState
 
 
 @Composable
-fun PlayGridItem(song: Song) {
+fun PlayGridItem(song: Song,
+                 modifier: Modifier = Modifier,
+                 state: PlaylistState,
+                 onSongClick: () -> Unit = {},
+                 playerState: PlayerState
+) {
+    val isCurrentSongPlaying = playerState?.song?.id == song.id
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clickable { onSongClick() }
+            .then(
+                if (isCurrentSongPlaying) {
+                    Modifier.background(getCurrentColorScheme().primary.copy(0.3f))
+                } else {
+                    Modifier
+                }
+            ),
     ) {
         var expanded by remember { mutableStateOf(false) }
         Box {
-            AsyncImage(
-                model = song.image,
-                contentDescription = song.name,
-                contentScale = ContentScale.Crop,
-                placeholder = painterResource(id = R.drawable.img_extra),
-                error = painterResource(id = R.drawable.img4),
-                modifier = Modifier
-                    .size(150.dp)
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(8.dp))
-            )
+            Box(
+                modifier = Modifier.size(150.dp)
+            ) {
+                AsyncImage(
+                    model = song.image,
+                    contentDescription = song.name,
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.img_extra),
+                    error = painterResource(id = R.drawable.apple_music),
+                    modifier = Modifier
+                        .size(150.dp)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+
+                if(isCurrentSongPlaying) {
+                    LottieAnimationPlayingSong(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(100.dp)
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -75,21 +108,21 @@ fun PlayGridItem(song: Song) {
             text = song.name,
             maxLines = 1,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
+            color = getCurrentColorScheme().onBackground,
             modifier = Modifier.padding(horizontal = 8.dp)
         )
         Text(
             text = song.artist,
             maxLines = 1,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = getCurrentColorScheme().onBackground,
             modifier = Modifier.padding(horizontal = 8.dp)
         )
 
         Text(
             text = song.duration,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
+            color = getCurrentColorScheme().onBackground,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
     }

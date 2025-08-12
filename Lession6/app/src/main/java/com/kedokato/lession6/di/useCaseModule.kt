@@ -1,5 +1,6 @@
 package com.kedokato.lession6.di
 
+import com.kedokato.lession6.data.repository.MusicServiceControllerImpl
 import com.kedokato.lession6.domain.usecase.AddPlaylistUseCase
 import com.kedokato.lession6.domain.usecase.AddSongToPlaylistUseCase
 import com.kedokato.lession6.domain.usecase.ClearUserIdUseCase
@@ -18,6 +19,16 @@ import com.kedokato.lession6.domain.usecase.SetUserIdUseCase
 import com.kedokato.lession6.domain.usecase.UpdateUserProfileUseCase
 import com.kedokato.lession6.domain.usecase.UserAuthenticationUseCase
 import com.kedokato.lession6.domain.usecase.UserRegisterUseCase
+import com.kedokato.lession6.domain.usecase.music.NextSongUseCase
+import com.kedokato.lession6.domain.usecase.music.PauseSongUseCase
+import com.kedokato.lession6.domain.usecase.music.PlayPlaylistUseCase
+import com.kedokato.lession6.domain.usecase.music.PlaySongFromPlaylistUseCase
+import com.kedokato.lession6.domain.usecase.music.PlaySongUseCase
+import com.kedokato.lession6.domain.usecase.music.PrevSongUseCase
+import com.kedokato.lession6.domain.usecase.music.RepeatSongUseCase
+import com.kedokato.lession6.domain.usecase.music.ResumeSongUseCase
+import com.kedokato.lession6.domain.usecase.music.ShuffleSongUseCase
+import com.kedokato.lession6.domain.usecase.music.StopSongUseCase
 import org.koin.dsl.module
 
 val useCaseModule = module {
@@ -42,4 +53,17 @@ val useCaseModule = module {
 
     single { SaveUserIdUseCase(get()) }
     single { GetUserIdUseCaseShared(get()) }
+
+//    Player Music
+    single { MusicServiceControllerImpl(get()) }
+    single { PlaySongUseCase(get()) }
+    single { PauseSongUseCase(get()) }
+    single { NextSongUseCase(get()) }
+    single { PrevSongUseCase(get()) }
+    single { ResumeSongUseCase(get()) }
+    single { StopSongUseCase(get()) }
+    single { RepeatSongUseCase(get()) }
+    single { ShuffleSongUseCase(get()) }
+    single { PlayPlaylistUseCase(get()) }
+    single { PlaySongFromPlaylistUseCase(get()) }
 }

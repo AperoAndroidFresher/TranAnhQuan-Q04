@@ -37,6 +37,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.compose.getCurrentColorScheme
 import com.kedokato.lession6.R
+import com.kedokato.lession6.data.service.MusicServiceController
+import com.kedokato.lession6.domain.model.PlayerState
 import com.kedokato.lession6.domain.model.Song
 import com.kedokato.lession6.domain.repository.SongLocalDataSource
 import com.kedokato.lession6.presentation.playlist.component.PlayGridItem
@@ -46,12 +48,16 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun MyPlaylistDetailScreen(
-     playlistId: Long,
-     playlistTitle: String,
+    playlistId: Long,
+    playlistTitle: String,
+    musicServiceController: MusicServiceController,
+    onSongClick: (Song) -> Unit = { }
 ) {
     val viewModel: PlaylistViewModel = koinViewModel()
 
     val state by viewModel.state.collectAsState()
+
+    val playerState by musicServiceController.playerState.collectAsState(PlayerState())
 
 
     LaunchedEffect(Unit) {
@@ -62,7 +68,10 @@ fun MyPlaylistDetailScreen(
         tittle = playlistTitle,
         typeDisplay = state.displayType,
         isSort = state.isSorting,
-        listSong = state.songs
+        listSong = state.songs,
+        state = state,
+        playerState = playerState,
+        onSongClick = onSongClick
     )
 
 
@@ -74,7 +83,10 @@ fun PlaylistContent(
     tittle: String = "My Playlist",
     typeDisplay: Boolean,
     isSort: Boolean = false,
-    listSong: List<Song>
+    listSong: List<Song>,
+    state: PlaylistState? = null,
+    playerState: PlayerState? = null,
+    onSongClick: (Song) -> Unit = { },
 ) {
     var draggedIndex by remember { mutableStateOf(-1) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
@@ -121,7 +133,12 @@ fun PlaylistContent(
                     },
                     onDrag = {
                     },
-                    modifier = Modifier.animateItem()
+                    modifier = Modifier.animateItem(),
+                    onNavigationPlayerMusic = {
+                        viewModel.processIntent(PlaylistIntent.PlaySelectSong(song.id))
+                        onSongClick(song)
+                    },
+                    playerState = playerState
                 )
             }
         }
@@ -129,7 +146,6 @@ fun PlaylistContent(
             Column(
                 modifier = Modifier
                     .background(getCurrentColorScheme().background)
-                    .padding(top = 16.dp)
                     .padding(horizontal = 8.dp)
             ) {
                 PlayListTopBar(
@@ -149,7 +165,7 @@ fun PlaylistContent(
                 ) {
                     items(listSong.size) { index ->
                         val song = listSong[index]
-                        PlayGridItem(song)
+                        PlayGridItem(song, onSongClick = { onSongClick(song) }, state = state!!, playerState = playerState!!, )
                     }
                 }
         }

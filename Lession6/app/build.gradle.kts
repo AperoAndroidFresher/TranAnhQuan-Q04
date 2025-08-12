@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.kotlin.serialization)
     id("com.google.devtools.ksp")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -81,6 +82,15 @@ dependencies {
     implementation(libs.lottie.compose)
 
     implementation(libs.datastore.preferences)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.session)
+
+
+    implementation(libs.androidx.media)
+
+
 
 
 

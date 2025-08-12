@@ -4,7 +4,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kedokato.lession6.domain.model.Song
+import com.kedokato.lession6.domain.repository.MusicRepo
+import com.kedokato.lession6.domain.usecase.DownloadSongUseCase
 import com.kedokato.lession6.domain.usecase.LoadSongFromPlaylistUseCase
+import com.kedokato.lession6.domain.usecase.music.NextSongUseCase
+import com.kedokato.lession6.domain.usecase.music.PauseSongUseCase
+import com.kedokato.lession6.domain.usecase.music.PlaySongUseCase
+import com.kedokato.lession6.domain.usecase.music.PrevSongUseCase
+import com.kedokato.lession6.domain.usecase.music.ResumeSongUseCase
+import com.kedokato.lession6.presentation.player.PlayerMusicState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,10 +21,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class PlaylistViewModel(
-    private val loadSongsFromPlaylistUseCase: LoadSongFromPlaylistUseCase
+    private val loadSongsFromPlaylistUseCase: LoadSongFromPlaylistUseCase,
+    private val playSongUseCase: PlaySongUseCase,
+    private val pauseSongUseCase: PauseSongUseCase,
+    private val nextSongUseCase: NextSongUseCase,
+    private val prevSongUseCase: PrevSongUseCase,
+    private val resumeSongUseCase: ResumeSongUseCase,
+    private val musicRepo: MusicRepo
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlaylistState())
     val state: StateFlow<PlaylistState> = _state.asStateFlow()
+
 
 
     fun processIntent(intent: PlaylistIntent) {
@@ -35,13 +50,17 @@ class PlaylistViewModel(
             is PlaylistIntent.LoadSongs -> {
                 loadSongsFromPlaylist(intent.playlistId)
             }
+
+            is PlaylistIntent.PlaySelectSong -> {
+                playSelectedSong(intent.songId)
+               _state.value.copy(
+                   isPlaying = true,
+               )
+            }
         }
     }
 
 
-    private fun loadSong(){
-
-    }
 
     private fun shortenTitle(title: String, maxLength: Int = 30): String {
         return if (title.length > maxLength) {
@@ -70,14 +89,34 @@ class PlaylistViewModel(
                         name = shortenTitle(song.title),
                         artist = song.artist,
                         duration = formatDuration(song.duration),
-                        image = song.albumArt,
-                        uri = song.uri,
+                        image = song.albumArt.toString(),
+                        uri = song.uri.toString(),
                     )
                 }
                 _state.update { it.copy(songs = formattedSongs) }
                 _state.update { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 Log.e("PlaylistViewModel", "Error loading songs from playlist", e)
+            }
+        }
+    }
+
+
+    private fun playSelectedSong(songId: Long) {
+        viewModelScope.launch {
+            val songs = _state.value.songs
+            val selectedIndex = songs.indexOfFirst { it.id == songId }
+
+            if (selectedIndex != -1) {
+                // Chỉ cần set playlist cho service và play bài được chọn
+                musicRepo.playPlaylist(songs, selectedIndex)
+
+                _state.update {
+                    it.copy(
+                        isPlaying = true,
+                        currentPlayingSongId = songId
+                    )
+                }
             }
         }
     }

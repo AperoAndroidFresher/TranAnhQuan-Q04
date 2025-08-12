@@ -42,8 +42,8 @@ fun AppNavigation(
 
     val initialScreen = when {
         isCheckingUser -> RememberScreen.NestedGraph
-        hasValidUser -> RememberScreen.NestedGraph
-        else -> RememberScreen.LoginScreen(username = "", password = "")
+        hasValidUser -> RememberScreen.SplashScreen
+        else -> RememberScreen.LoginScreen(username = "quan", password = "1")
     }
 
     val backStack = rememberNavBackStack<RememberScreen>(initialScreen)
@@ -59,6 +59,10 @@ fun AppNavigation(
             entry<RememberScreen.SplashScreen> {
                 SplashScreen(
                     modifier = modifier,
+                    onNavigationLogin = {
+                        backStack.clear()
+                        backStack.add(RememberScreen.LoginScreen(username = "", password = ""))
+                    }
                 )
             }
 
@@ -112,6 +116,10 @@ fun AppNavigation(
                     modifier = modifier,
                     onBackClick = {
                         backStack.removeLastOrNull()
+                    },
+                    onNavigationLogin ={
+                        backStack.clear()
+                        backStack.add(RememberScreen.LoginScreen(username = "", password = ""))
                     }
                 )
             }
@@ -124,7 +132,8 @@ fun AppNavigation(
                 NestedGraph(
                     onProfileClick = {
                         backStack.add(RememberScreen.ProfileScreen)
-                    }
+                    },
+                    musicServiceController = koinInject()
                 )
             }
         }
